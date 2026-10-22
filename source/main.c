@@ -47,9 +47,6 @@ int main(int argc, char* argv[]) {
 
     initGame();
 
-    // Configuration des matrices 3D de projection et de vue
-    C3D_Mtx projection, view;
-
     while (aptMainLoop()) {
         hidScanInput();
         u32 kDown = hidKeysDown();
@@ -57,7 +54,7 @@ int main(int argc, char* argv[]) {
 
         if (kDown & KEY_START) break;
 
-        // Commandes de déplacement 3D
+        // Commandes de déplacement
         circlePosition cp;
         hidCircleRead(&cp);
         if (abs(cp.dx) > 15) {
@@ -74,7 +71,7 @@ int main(int argc, char* argv[]) {
             playerZ -= cosf(playerAngle) * speed;
         }
 
-        // Tir sur les aliens
+        // Tir
         if (kDown & KEY_R) {
             for(int i = 0; i < 5; i++) {
                 if (aliens[i].active) {
@@ -89,27 +86,16 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        // --- DEBUT DU RENDU 3D ---
+        // --- RENDU ---
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0x101018FF, 0);
         C3D_FrameDrawOn(target);
-
-        // Matrice de projection perspective 3D (FOV 60 degrés)
-        Mtx_Perspective(&projection, 60.0f * (M_PI / 180.0f), 400.0f / 240.0f, 0.1f, 100.0f);
-        C3D_FVUnifMtx(GPU_VERTEX_SHADER, 0, &projection);
-
-        // Mise à jour de la caméra (Vue subjective 3D)
-        C3D_Mtx mtxView;
-        Mtx_Identity(&mtxView);
-        Mtx_RotateZ(&mtxView, -playerAngle, true);
-        Mtx_Translate(&mtxView, -playerX, -playerY, -playerZ, true);
-        C3D_FVUnifMtx(GPU_VERTEX_SHADER, 4, &mtxView);
 
         C3D_FrameEnd(0);
 
         // --- AFFICHAGE BAS (HUD) ---
         consoleClear();
-        printf("\x1b[1;1H=== MUSEE ALIEN : 3D REEL ===");
+        printf("\x1b[1;1H=== MUSEE ALIEN : 3D ===");
         printf("\x1b[3;1HXYZ: %.1f, %.1f, %.1f", (double)playerX, (double)playerY, (double)playerZ);
         printf("\x1b[4;1HAliens elimines : %d / 5", aliensKilled);
         printf("\x1b[6;1HUtilisez le Stick pour bouger");
