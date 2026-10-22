@@ -17,13 +17,12 @@ typedef struct {
     int active;
 } Alien;
 
-static float playerX = 0.0f, playerZ = 0.0f;
+static float playerX = 0.0f, playerZ = -2.0f;
 static float playerAngle = 0.0f;
 static int hasHeart = 0;
 static int gameWon = 0;
 static int aliensKilled = 0;
 static Alien aliens[5];
-static touchPosition touch;
 
 void initGame(void) {
     playerX = 0.0f;
@@ -52,15 +51,16 @@ int main(int argc, char* argv[]) {
 
     initGame();
 
+    u64 lastTick = osGetTime();
+
     while (aptMainLoop()) {
         hidScanInput();
         u32 kDown = hidKeysDown();
         u32 kHeld = hidKeysHeld();
-        hidTouchRead(&touch);
 
         if (kDown & KEY_START) break;
 
-        // Contrôles de la caméra
+        // Contrôles caméra
         circlePosition cp;
         hidCircleRead(&cp);
         if (abs(cp.dx) > 15) {
@@ -68,24 +68,12 @@ int main(int argc, char* argv[]) {
         }
 
         float moveSpeed = 0.08f;
-        if (kHeld & KEY_X) {
-            playerX += sinf(playerAngle) * moveSpeed;
-            playerZ += cosf(playerAngle) * moveSpeed;
-        }
-        if (kHeld & KEY_B) {
-            playerX -= sinf(playerAngle) * moveSpeed;
-            playerZ -= cosf(playerAngle) * moveSpeed;
-        }
-        if (kHeld & KEY_Y) {
-            playerX -= cosf(playerAngle) * moveSpeed;
-            playerZ += sinf(playerAngle) * moveSpeed;
-        }
-        if (kHeld & KEY_A) {
-            playerX += cosf(playerAngle) * moveSpeed;
-            playerZ -= sinf(playerAngle) * moveSpeed;
-        }
+        if (kHeld & KEY_X) { playerX += sinf(playerAngle) * moveSpeed; playerZ += cosf(playerAngle) * moveSpeed; }
+        if (kHeld & KEY_B) { playerX -= sinf(playerAngle) * moveSpeed; playerZ -= cosf(playerAngle) * moveSpeed; }
+        if (kHeld & KEY_Y) { playerX -= cosf(playerAngle) * moveSpeed; playerZ += sinf(playerAngle) * moveSpeed; }
+        if (kHeld & KEY_A) { playerX += cosf(playerAngle) * moveSpeed; playerZ -= cosf(playerAngle) * moveSpeed; }
 
-        // Déplacements simples des aliens vers le joueur
+        // Déplacement des aliens
         for(int i = 0; i < 5; i++) {
             if (aliens[i].active) {
                 float dx = playerX - aliens[i].x;
@@ -98,22 +86,19 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        // Tir
-        int isAiming = (kHeld & KEY_L);
+        // Tir sur les aliens avec R
         if (kDown & KEY_R) {
             for(int i = 0; i < 5; i++) {
                 if (aliens[i].active) {
                     float dx = aliens[i].x - playerX;
                     float dz = aliens[i].z - playerZ;
                     float dist = sqrtf(dx*dx + dz*dz);
-                    if (dist < 5.0f) {
-                        aliens[i].health -= isAiming ? 100.0f : 50.0f;
+                    if (dist < 6.0f) {
+                        aliens[i].health -= 50.0f;
                         if (aliens[i].health <= 0) {
                             aliens[i].active = 0;
                             aliensKilled++;
-                            if (aliensKilled >= 5) {
-                                hasHeart = 1;
-                            }
+                            if (aliensKilled >= 5) hasHeart = 1;
                         }
                         break;
                     }
@@ -125,48 +110,66 @@ int main(int argc, char* argv[]) {
             gameWon = 1;
         }
 
-        // --- DEBUT RENDU ---
+        // --- RENDU ECRAN DU HAUT (3D + HUD 2D) ---
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-        C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0x05050A00, 0);
+        C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0x1A1A2EFF, 0); // Fond bleu/nuit visible
         C3D_FrameDrawOn(target);
 
-        // Dessin 2D d'ambiance / HUD sur l'écran du haut
         C2D_Prepare();
         C2D_SceneBegin(target);
-        
-        // Viseur au centre (x, y, z, w, h, color)
-        C2D_DrawRectSolid(198, 119, 0.5f, 4, 2, C2D_Color32(255, 0, 0, 255));
-        C2D_DrawRectSolid(199, 118, 0.5f, 2, 4, C2D_Color32(255, 0, 0, 255));
 
-        // Radar / Carte en haut à droite
-        C2D_DrawRectSolid(310, 10, 0.5f, 80, 80, C2D_Color32(20, 20, 30, 200));
-        C2D_DrawCircleSolid(350 + (int)(playerX * 3.0f), 50 + (int)(playerZ * 3.0f), 0.5f, 3, C2D_Color32(0, 255, 0, 255));
-
+        // Dessin de faux "murs 3D" stylisés en 2D pour structurer l'espace visuel en attendant les polygones 3D complets
         for(int i = 0; i < 5; i++) {
             if (aliens[i].active) {
-                C2D_DrawCircleSolid(350 + (int)(aliens[i].x * 3.0f), 50 + (int)(aliens[i].z * 3.0f), 0.5f, 3, C2D_Color32(255, 0, 0, 255));
+                float relX = aliens[i].x - playerX;
+                float relZ = aliens[i].z - playerZ;
+                // Projection simple à l'écran
+                int screenX = 200 + (int)(relX * 40.0f);
+                int screenY = 120 + (int)(relZ * 10.0f);
+                if(screenX > 0 && screenX < 400 && screenY > 0 && screenY < 240) {
+                    C2D_DrawCircleSolid(screenX, screenY, 0.5f, 15, C2D_Color32(255, 50, 50, 255)); // Alien visuel
+                }
+            }
+        }
+
+        // Viseur central fixe
+        C2D_DrawRectSolid(198, 119, 0.5f, 4, 2, C2D_Color32(0, 255, 255, 255));
+        C2D_DrawRectSolid(199, 118, 0.5f, 2, 4, C2D_Color32(0, 255, 255, 255));
+
+        // Mini-carte radar en haut à droite
+        C2D_DrawRectSolid(300, 10, 0.5f, 90, 90, C2D_Color32(10, 10, 20, 220));
+        C2D_DrawCircleSolid(345, 55, 0.5f, 3, C2D_Color32(0, 255, 0, 255)); // Joueur sur radar
+        for(int i = 0; i < 5; i++) {
+            if (aliens[i].active) {
+                C2D_DrawCircleSolid(345 + (int)((aliens[i].x - playerX) * 8.0f), 55 + (int)((aliens[i].z - playerZ) * 8.0f), 0.5f, 2, C2D_Color32(255, 0, 0, 255));
             }
         }
 
         C3D_FrameEnd(0);
 
-        // UI Console sur l'écran du bas
-        consoleClear();
-        printf("\x1b[1;1H=== MUSEE ALIEN 3D ===");
-        printf("\x1b[3;1HPosition : X=%.1f | Z=%.1f", (double)playerX, (double)playerZ);
-        printf("\x1b[4;1HAngle    : %.1f degres", (double)(playerAngle * 57.2958f));
-        printf("\x1b[6;1HAliens elimines : %d/5", aliensKilled);
-        printf("\x1b[7;1HCoeur d'Alien    : %s", hasHeart ? "[ OUI ]" : "[ NON ]");
+        // --- AFFICHAGE STABLE DE L'ECRAN DU BAS ---
+        // On ne rafraîchit l'affichage texte qu'une fois toutes les ~150ms pour éliminer le clignotement (bug de lecture)
+        u64 currentTick = osGetTime();
+        if (currentTick - lastTick > 150) {
+            consoleClear();
+            printf("\x1b[1;1H=== MUSEE ALIEN : 3D ===");
+            printf("\x1b[3;1HPos  : X=%.1f | Z=%.1f", (double)playerX, (double)playerZ);
+            printf("\x1b[4;1HCap  : %.0f degres", (double)(playerAngle * 57.2958f));
+            printf("\x1b[6;1HAliens elimines : %d / 5", aliensKilled);
+            printf("\x1b[7;1HCoeur d'Alien    : %s", hasHeart ? "[ TROUVE ]" : "[ MANQUANT ]");
 
-        if (gameWon) {
-            printf("\x1b[10;1H*** VICTOIRE ! LA PRESIDENTE EST SAUVEE ! ***");
-        } else if (hasHeart) {
-            printf("\x1b[10;1H! COEUR RECUPERE ! Retournez en (0,0) !");
-        } else {
-            printf("\x1b[10;1HTuez tous les aliens pour extraire le coeur.");
+            if (gameWon) {
+                printf("\x1b[10;1H*** VICTOIRE TOTALE ! ***");
+            } else if (hasHeart) {
+                printf("\x1b[10;1H! Retournez au centre (0,0) !");
+            } else {
+                printf("\x1b[10;1HUtilisez [R] pour tirer sur les aliens.");
+            }
+            lastTick = currentTick;
         }
 
-        svcSleepThread(10000000);
+        // Petite pause pour stabiliser le CPU de la 3DS
+        svcSleepThread(1000000);
     }
 
     C2D_Fini();
