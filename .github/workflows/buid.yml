@@ -1,8 +1,8 @@
-name: Build 3DS App
+name: Build 3DS
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
@@ -11,52 +11,44 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    container: devkitpro/devkitarm:latest
     steps:
-      - name: Checkout repository
+      - name: Recuperer le code
         uses: actions/checkout@v4
 
-      - name: Installer les dependances systeme et devkitPro
+      - name: Installer les outils (makerom, bannertool, qrencode)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y wget unzip qrencode make build-essential
-          
-          # Installation du gestionnaire devkitPro (dkp-pacman)
-          sudo dkp-pacman -Syu --noconfirm || true
-          sudo dkp-pacman -S --noconfirm 3ds-dev 3ds-libcitro2d
-
-      - name: Telecharger et installer bannertool
-        run: |
+          apt-get update && apt-get install -y wget unzip qrencode
           wget -q https://github.com/diasurgical/bannertool/releases/download/1.2.0/bannertool.zip
           unzip -j bannertool.zip "linux-x86_64/bannertool" -d /opt/devkitpro/tools/bin
-          sudo chmod a+x /opt/devkitpro/tools/bin/bannertool
-
-      - name: Telecharger et installer makerom
-        run: |
           wget -q https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18/makerom-v0.18-ubuntu_x86_64.zip
           unzip -o makerom-v0.18-ubuntu_x86_64.zip makerom -d /opt/devkitpro/tools/bin
-          sudo chmod a+x /opt/devkitpro/tools/bin/makerom
+          chmod a+x /opt/devkitpro/tools/bin/makerom /opt/devkitpro/tools/bin/bannertool
 
-      - name: Compiler le projet
-        env:
-          DEVKITPRO: /opt/devkitpro
-          DEVKITARM: /opt/devkitpro/devkitARM
-        run: |
-          make
-          chmod +x tools/make_cia.sh
-          make cia
+      - name: Compiler (.3dsx)
+        run: make
 
-      - name: Generer le QR code d'installation
-        run: |
-          qrencode -o qr_code.png "https://github.com/${{ github.repository }}/releases/download/latest/alien_museum.cia"
+      - name: Creer le .cia
+        run: make cia
 
-      - name: Publier dans les Releases GitHub
+      - name: Generer le QR code
+        run: qrencode -o alien_museum-qr.png -s 10 -m 2 "https://github.com/${{ github.repository }}/releases/download/latest/alien_museum.cia"
+
+      - name: Sauvegarder les fichiers (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: alien_museum
+          path: |
+            alien_museum.3dsx
+            alien_museum.cia
+            alien_museum-qr.png
+
+      - name: Publier dans les Releases (tag latest)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
+          name: Derniere version
           files: |
             alien_museum.3dsx
             alien_museum.cia
-            qr_code.png
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            alien_museum-qr.png
