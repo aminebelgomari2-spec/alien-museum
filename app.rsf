@@ -10,3 +10,9 @@ RomSpec:
     CardType       : ics
     Filesystem     : [ROMFS]
 }
+
+AccessControlInfo:
+{
+    PermitServer   : [ 0x111f ]
+    SystemMode     : Normal
+}
