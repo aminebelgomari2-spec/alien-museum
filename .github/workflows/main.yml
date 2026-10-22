@@ -1,0 +1,56 @@
+name: Build 3DS App
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Installer les dependances systeme (wget, unzip, qrencode)
+        run: |
+          apt-get update && apt-get install -y wget unzip qrencode
+
+      - name: Telecharger et installer bannertool
+        run: |
+          wget -q https://github.com/diasurgical/bannertool/releases/download/1.2.0/bannertool.zip
+          unzip -j bannertool.zip "linux-x86_64/bannertool" -d /opt/devkitpro/tools/bin
+          chmod a+x /opt/devkitpro/tools/bin/bannertool
+
+      - name: Telecharger et installer makerom
+        run: |
+          wget -q https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18/makerom-v0.18-ubuntu_x86_64.zip
+          unzip -o makerom-v0.18-ubuntu_x86_64.zip makerom -d /opt/devkitpro/tools/bin
+          chmod a+x /opt/devkitpro/tools/bin/makerom
+
+      - name: Compiler le projet
+        run: |
+          make
+          chmod +x tools/make_cia.sh
+          make cia
+
+      - name: Generer le QR code d'installation
+        run: |
+          qrencode -o qr_code.png "https://github.com/${{ github.repository }}/releases/download/latest/alien_museum.cia"
+
+      - name: Publier dans les Releases GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          files: |
+            alien_museum.3dsx
+            alien_museum.cia
+            qr_code.png
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
