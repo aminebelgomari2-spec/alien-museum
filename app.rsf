@@ -2,17 +2,11 @@ BasicInfo:
 {
     Title          : "Musee Alien"
     ProductCode    : "CTR-P-ALEN"
-    Logo           : Nintendo
+    UniqueID       : 0xc7a23
 }
 
 RomSpec:
 {
     CardType       : ics
     Filesystem     : [ROMFS]
-}
-
-AccessControlInfo:
-{
-    PermitServer   : [ 0x111f ]
-    SystemMode     : Normal
 }
