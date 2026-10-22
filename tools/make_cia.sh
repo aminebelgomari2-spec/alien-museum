@@ -1,25 +1,32 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ELF="${1:-alien_museum.elf}"
-OUT="${2:-alien_museum.cia}"
+ELF="${1:-PhoneScreen3DS.elf}"
+OUT="${2:-PhoneScreen3DS.cia}"
+MAKEROM="${MAKEROM:-makerom}"
+BANNERTOOL="${BANNERTOOL:-bannertool}"
 WORK="build/cia"
 
 mkdir -p "$WORK"
 
-# Utilise l'icône de base fournie par libctru pour éviter toute erreur d'image
-ICON="/opt/devkitpro/libctru/default_icon.png"
+"$BANNERTOOL" makebanner \
+  -i assets/banner.png \
+  -a assets/audio.wav \
+  -o "$WORK/banner.bnr"
 
-echo "Generation du fichier icon.icn..."
-smdhtool --create "Musee Alien" "FPS d'horreur dans un musee alien" "Homebrew Dev" "$ICON" "$WORK/icon.icn"
+"$BANNERTOOL" makesmdh \
+  -s "PhoneScreen 3DS" \
+  -l "Utilise ton telephone sur la 3DS" \
+  -p "Community" \
+  -i assets/icon.png \
+  -o "$WORK/icon.icn"
 
-echo "Generation du fichier CIA..."
-makerom -f cia -o "$OUT" \
+"$MAKEROM" -f cia -o "$OUT" \
   -elf "$ELF" \
   -rsf app.rsf \
   -target t \
   -exefslogo \
-  -icon "$WORK/icon.icn"
+  -icon "$WORK/icon.icn" \
+  -banner "$WORK/banner.bnr"
 
-echo "CIA genere avec succes !"
-ls -lh "$OUT"
+ls -l "$OUT"
