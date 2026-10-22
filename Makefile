@@ -9,13 +9,17 @@ TITLE		:= Musee Alien
 DESCRIPTION	:= Un FPS d'horreur sombre dans un musee alien.
 AUTHOR		:= Homebrew Dev
 
-# Unique ID unique pour éviter les conflits
 UNIQUE_ID	:= 0xc7a23
 PRODUCT_CODE	:= CTR-P-ALEN
 
-include $(DEVKITARM)/3ds_rules.rules
+# Chemins standards de devkitARM
+DEVKITPRO	?= /opt/devkitpro
+DEVKITARM	?= $(DEVKITPRO)/devkitARM
 
-ARCH		:= -march=armv6k -mtune1136j-s -mfloat-abi=hard -mfpu=vfpv2
+# C'est cette ligne qui corrige l'erreur :
+include $(DEVKITPRO)/libctru/3ds_rules
+
+ARCH		:= -march=armv6k -mtune=mpcore -mfloat-abi=hard -mfpu=vfpv2
 CFLAGS		:= -g -Wall -O2 -mword-relocations $(ARCH) -D__3DS__ $(INCLUDE)
 CXXFLAGS	:= $(CFLAGS)
 ASFLAGS		:= -g $(ARCH)
@@ -60,7 +64,6 @@ $(OUTPUT).3dsx: $(OUTPUT).elf
 $(OUTPUT).elf: $(OBJS)
 	@echo "Liaison $^ -> $@"
 	@$(LD) $(LDFLAGS) $(OBJS) $(LIBS) -o $@
-	@picasso $(OUTPUT).elf
 
 include $(DEPENDS)
 
