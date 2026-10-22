@@ -1,74 +1,56 @@
-TARGET		:= alien_museum
-BUILD		:= build
-SOURCES		:= source
-INCLUDES	:= include
-DATA		:= data
-ROMFS		:= romfs
+.SUFFIXES:
 
-TITLE		:= Musee Alien
-DESCRIPTION	:= Un FPS d'horreur sombre dans un musee alien.
-AUTHOR		:= Homebrew Dev
+DEVKITPRO ?= /opt/devkitpro
+DEVKITARM ?= $(DEVKITPRO)/devkitARM
+export PATH := $(DEVKITPRO)/tools/bin:$(DEVKITARM)/bin:$(PATH)
 
-UNIQUE_ID	:= 0xc7a23
-PRODUCT_CODE	:= CTR-P-ALEN
+CTRULIB  ?= $(DEVKITPRO)/libctru
+PORTLIBS ?= $(DEVKITPRO)/portlibs/3ds
 
-# Chemins standards de devkitARM dans l'image Docker
-DEVKITPRO	?= /opt/devkitpro
-DEVKITARM	?= $(DEVKITPRO)/devkitARM
+TARGET     := alien_museum
+BUILD      := build
+APP_TITLE  := Musee Alien
+APP_DESC   := FPS d'horreur dans un musee alien
+APP_AUTHOR := Homebrew Dev
 
-# Recherche automatique du fichier de règles 3DS
-RULES_FILE := $(shell if [ -f $(DEVKITARM)/base_rules ]; then echo $(DEVKITARM)/base_rules; fi)
-include $(RULES_FILE)
+ICON := $(if $(wildcard assets/icon.png),assets/icon.png,$(CTRULIB)/default_icon.png)
 
-RULES_3DS := $(shell if [ -f $(DEVKITPRO)/libctru/3ds_rules ]; then echo $(DEVKITPRO)/libctru/3ds_rules; else echo $(DEVKITARM)/3ds_rules.rules; fi)
-include $(RULES_3DS)
+CC := arm-none-eabi-gcc
 
-ARCH		:= -march=armv6k -mtune=mpcore -mfloat-abi=hard -mfpu=vfpv2
-CFLAGS		:= -g -Wall -O2 -mword-relocations $(ARCH) -D__3DS__ $(INCLUDE)
-CXXFLAGS	:= $(CFLAGS)
-ASFLAGS		:= -g $(ARCH)
-LDFLAGS		:= -specs=3dsx.specs $(ARCH)
+ARCH   := -march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft
+CFLAGS := -std=gnu11 -g -Wall -O2 -mword-relocations -ffunction-sections -fdata-sections \
+          $(ARCH) -D__3DS__ -Isource -I$(CTRULIB)/include -I$(PORTLIBS)/include
+LDFLAGS := -specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(BUILD)/$(TARGET).map -Wl,--gc-sections \
+           -L$(CTRULIB)/lib -L$(PORTLIBS)/lib
+LIBS := -lcitro2d -lcitro3d -lctru -lm
 
-LIBS		:= -lcitro2d -lcitro3d -lctru -lm
+SRC := $(wildcard source/*.c)
+HDR := $(wildcard source/*.h)
+OBJ := $(patsubst source/%.c,$(BUILD)/%.o,$(SRC))
 
-ifneq ($(BUILD),$(notdir $(CURDIR)))
+.PHONY: all cia clean
 
-export OUTPUT	:= $(CURDIR)/$(TARGET)
-export TOPDIR	:= $(CURDIR)
-
-.PHONY: all clean cia
-
-all: $(BUILD)
-	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+all: $(TARGET).3dsx
 
 $(BUILD):
 	@mkdir -p $@
 
+$(BUILD)/%.o: source/%.c $(HDR) | $(BUILD)
+	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
+
+$(TARGET).elf: $(OBJ) | $(BUILD)
+	$(CC) $(LDFLAGS) $(OBJ) $(LIBS) -o $@
+
+$(BUILD)/$(TARGET).smdh: $(ICON) | $(BUILD)
+	smdhtool --create "$(APP_TITLE)" "$(APP_DESC)" "$(APP_AUTHOR)" $(ICON) $@
+
+$(TARGET).3dsx: $(TARGET).elf $(BUILD)/$(TARGET).smdh
+	3dsxtool $(TARGET).elf $@ --smdh=$(BUILD)/$(TARGET).smdh
+
+cia: $(TARGET).elf
+	bash tools/make_cia.sh $(TARGET).elf $(TARGET).cia
+
 clean:
-	@echo "Nettoyage..."
-	@rm -fr $(BUILD) $(TARGET).3dsx $(TARGET).cia $(TARGET).elf
+	rm -rf $(BUILD) $(TARGET).elf $(TARGET).3dsx $(TARGET).cia
 
-cia: all
-	@bash tools/make_cia.sh
-
-else
-
-DEPENDS	:= $(OFILES:.o=.d)
-OBJS	:= $(addprefix $(BUILD)/,$(notdir $(CFILES)) $(notdir $(CPPFILES)) $(notdir $(SFILES)))
-OBJS	:= $(OBJS:.cpp=.o)
-OBJS	:= $(OBJS:.c=.o)
-OBJS	:= $(OBJS:.s=.o)
-
-vpath %.c $(SOURCES)
-vpath %.cpp $(SOURCES)
-vpath %.s $(SOURCES)
-
-$(OUTPUT).3dsx: $(OUTPUT).elf
-
-$(OUTPUT).elf: $(OBJS)
-	@echo "Liaison $^ -> $@"
-	@$(LD) $(LDFLAGS) $(OBJS) $(LIBS) -o $@
-
-include $(DEPENDS)
-
-endif
+-include $(OBJ:.o=.d)
