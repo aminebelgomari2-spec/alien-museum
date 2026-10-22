@@ -35,6 +35,8 @@ jobs:
           chmod a+x /opt/devkitpro/tools/bin/makerom
 
       - name: Compiler le projet
+        env:
+          DEVKITARM: /opt/devkitpro/devkitARM
         run: |
           make
           chmod +x tools/make_cia.sh
