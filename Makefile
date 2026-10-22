@@ -13,7 +13,8 @@ APP_TITLE  := Musee Alien
 APP_DESC   := FPS d'horreur dans un musee alien
 APP_AUTHOR := Homebrew Dev
 
-ICON := $(if $(wildcard assets/icon.png),assets/icon.png,$(CTRULIB)/default_icon.png)
+# Utilise l'icône par défaut si assets/icon.png n'est pas un fichier PNG valide
+ICON := $(CTRULIB)/default_icon.png
 
 CC := arm-none-eabi-gcc
 
@@ -41,7 +42,7 @@ $(BUILD)/%.o: source/%.c $(HDR) | $(BUILD)
 $(TARGET).elf: $(OBJ) | $(BUILD)
 	$(CC) $(LDFLAGS) $(OBJ) $(LIBS) -o $@
 
-$(BUILD)/$(TARGET).smdh: $(ICON) | $(BUILD)
+$(BUILD)/$(TARGET).smdh: | $(BUILD)
 	smdhtool --create "$(APP_TITLE)" "$(APP_DESC)" "$(APP_AUTHOR)" $(ICON) $@
 
 $(TARGET).3dsx: $(TARGET).elf $(BUILD)/$(TARGET).smdh
