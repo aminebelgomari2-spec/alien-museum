@@ -1,0 +1,32 @@
+BasicInfo:
+  Title                   : "Musee Alien"
+  CompanyCode             : "01"
+  ProductCode             : "CTR-P-ALEN"
+  ContentType             : Application
+  Logo                    : Nintendo
+
+RomFs:
+  RootPath                : "romfs"
+
+AccessControlInfo:
+  CoreVersion             : 2
+  SystemSaveDataId1       : 0x00010032
+  StorageAccess           :
+    - EditData
+    - SavedataAccess
+  ServiceAccessControl    :
+    - APT:u
+    - gsp::GPU
+    - hid:USER
+    - cfg:u
+    - fs:USER
+    - mcu::HWC
+    - pxi:dev
+    - soc:U
+    - ac:u
+
+SystemInfo:
+  PermittedBurn           : false
+  SaveDataSize            : 1KB
+  RemovableStorageDataSize: 0KB
+  SystemMode              : 64MB
