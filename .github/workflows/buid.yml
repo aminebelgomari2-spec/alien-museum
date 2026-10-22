@@ -18,7 +18,7 @@ jobs:
 
       - name: Installer l'environnement 3DS et les outils
         run: |
-          dkp-pacman -Sy --noconfirm --needed 3ds-dev 3ds-libcitro2d
+          dkp-pacman -Sy --noconfirm --needed 3ds-dev 3ds-citro2d
           apt-get update && apt-get install -y wget unzip qrencode
           wget -q https://github.com/diasurgical/bannertool/releases/download/1.2.0/bannertool.zip
           unzip -j bannertool.zip "linux-x86_64/bannertool" -d /opt/devkitpro/tools/bin
