@@ -22,6 +22,10 @@ jobs:
         run: |
           apt-get update && apt-get install -y wget unzip qrencode
 
+      - name: Installer l'environnement 3DS (libctru / citro2d)
+        run: |
+          dkp-pacman -Sy --noconfirm --needed 3ds-dev 3ds-libcitro2d
+
       - name: Telecharger et installer bannertool
         run: |
           wget -q https://github.com/diasurgical/bannertool/releases/download/1.2.0/bannertool.zip
