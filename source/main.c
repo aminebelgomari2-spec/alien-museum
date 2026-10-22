@@ -125,26 +125,26 @@ int main(int argc, char* argv[]) {
             gameWon = 1;
         }
 
-        // --- DEBUT RENDU 3D ---
+        // --- DEBUT RENDU ---
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0x05050A00, 0);
         C3D_FrameDrawOn(target);
 
-        // Dessin 2D d'ambiance / HUD sur l'écran du haut via C2D
+        // Dessin 2D d'ambiance / HUD sur l'écran du haut
         C2D_Prepare();
         C2D_SceneBegin(target);
         
-        // Viseur au centre
-        C2D_DrawRectSolid(198, 119, 4, 2, C2D_Color32(255, 0, 0, 255));
-        C2D_DrawRectSolid(199, 118, 2, 4, C2D_Color32(255, 0, 0, 255));
+        // Viseur au centre (x, y, z, w, h, color)
+        C2D_DrawRectSolid(198, 119, 0.5f, 4, 2, C2D_Color32(255, 0, 0, 255));
+        C2D_DrawRectSolid(199, 118, 0.5f, 2, 4, C2D_Color32(255, 0, 0, 255));
 
         // Radar / Carte en haut à droite
-        C2D_DrawRectSolid(310, 10, 80, 80, C2D_Color32(20, 20, 30, 200));
-        C2D_DrawCircleSolid(350 + (int)(playerX * 3.0f), 50 + (int)(playerZ * 3.0f), 0, 3, C2D_Color32(0, 255, 0, 255));
+        C2D_DrawRectSolid(310, 10, 0.5f, 80, 80, C2D_Color32(20, 20, 30, 200));
+        C2D_DrawCircleSolid(350 + (int)(playerX * 3.0f), 50 + (int)(playerZ * 3.0f), 0.5f, 3, C2D_Color32(0, 255, 0, 255));
 
         for(int i = 0; i < 5; i++) {
             if (aliens[i].active) {
-                C2D_DrawCircleSolid(350 + (int)(aliens[i].x * 3.0f), 50 + (int)(aliens[i].z * 3.0f), 0, 3, C2D_Color32(255, 0, 0, 255));
+                C2D_DrawCircleSolid(350 + (int)(aliens[i].x * 3.0f), 50 + (int)(aliens[i].z * 3.0f), 0.5f, 3, C2D_Color32(255, 0, 0, 255));
             }
         }
 
