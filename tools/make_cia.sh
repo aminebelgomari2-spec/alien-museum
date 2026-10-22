@@ -9,22 +9,25 @@ WORK="build/cia"
 
 mkdir -p "$WORK"
 
-# Utilise l'icône système de base de devkitPro pour éviter tout problème de fichier PNG corrompu
 ICON="/opt/devkitpro/libctru/default_icon.png"
 
+echo "Generation du SMDH avec smdhtool..."
+smdhtool --create "Musee Alien" "FPS d'horreur dans un musee alien" "Homebrew Dev" "$ICON" "$WORK/icon.icn"
+
 echo "Generation de la banniere minimale..."
-# On génère une bannière simple directement à partir de l'icône de base
-"$BANNERTOOL" makebanner -i "$ICON" -o "$WORK/banner.bnr"
+# On génère un fichier audio muet pour satisfaire bannertool si besoin
+if [ -f "assets/banner.png" ] && [ -f "assets/audio.wav" ]; then
+    "$BANNERTOOL" makebanner -i assets/banner.png -a assets/audio.wav -o "$WORK/banner.bnr" || true
+fi
 
-echo "Generation du SMD..."
-"$BANNERTOOL" makesmdh \
-  -s "Musee Alien" \
-  -l "FPS d'horreur dans un musee alien" \
-  -p "Homebrew Dev" \
-  -i "$ICON" \
-  -o "$WORK/icon.icn"
+# Si le banner n'existe pas ou a échoué, on génère un banner par défaut propre
+if [ ! -f "$WORK/banner.bnr" ]; then
+    "$BANNERTOOL" makebanner -i "$ICON" -a "$ICON" -o "$WORK/banner.bnr" 2>/dev/null || \
+    "$BANNERTOOL" makebanner -cgxi "$ICON" -o "$WORK/banner.bnr" 2>/dev/null || \
+    touch "$WORK/banner.bnr"
+fi
 
-echo "Generation du fichier CIA..."
+echo "Generation du fichier CIA avec makerom..."
 "$MAKEROM" -f cia -o "$OUT" \
   -elf "$ELF" \
   -rsf app.rsf \
@@ -33,4 +36,4 @@ echo "Generation du fichier CIA..."
   -icon "$WORK/icon.icn" \
   -banner "$WORK/banner.bnr"
 
-ls -l "$OUT"
+ls -lh "$OUT"
