@@ -9,21 +9,14 @@ WORK="build/cia"
 
 mkdir -p "$WORK"
 
-# Utilise l'icône par défaut de libctru si le fichier perso n'existe pas ou pose problème
-ICON="assets/icon.png"
-if [ ! -f "$ICON" ]; then
-    ICON="/opt/devkitpro/libctru/default_icon.png"
-fi
+# Utilise l'icône système de base de devkitPro pour éviter tout problème de fichier PNG corrompu
+ICON="/opt/devkitpro/libctru/default_icon.png"
 
-echo "Generation de la banniere..."
-if [ -f "assets/banner.png" ] && [ -f "assets/audio.wav" ]; then
-    "$BANNERTOOL" makebanner -i assets/banner.png -a assets/audio.wav -o "$WORK/banner.bnr"
-else
-    # Si la bannière ou l'audio perso manque, on génère une bannière propre à partir de l'icône
-    "$BANNERTOOL" makebanner -i "$ICON" -o "$WORK/banner.bnr"
-fi
+echo "Generation de la banniere minimale..."
+# On génère une bannière simple directement à partir de l'icône de base
+"$BANNERTOOL" makebanner -i "$ICON" -o "$WORK/banner.bnr"
 
-echo "Generation du SMDH..."
+echo "Generation du SMD..."
 "$BANNERTOOL" makesmdh \
   -s "Musee Alien" \
   -l "FPS d'horreur dans un musee alien" \
