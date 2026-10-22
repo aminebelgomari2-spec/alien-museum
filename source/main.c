@@ -10,14 +10,17 @@
 #define FOCAL 270.0f
 #define NEAR_Z 0.25f
 
+#define DISPLAY_TRANSFER_FLAGS \
+    (GX_TRANSFER_FLIP_VERT(0) | GX_TRANSFER_OUT_TILED(0) | GX_TRANSFER_RAW_COPY(0) | \
+    GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB8) | GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB8) | \
+    GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO))
+
 typedef struct { float x, y, z; } V3;
 
 static V3 vmk(float x, float y, float z) { V3 v = { x, y, z }; return v; }
 static V3 vadd(V3 a, V3 b) { return vmk(a.x + b.x, a.y + b.y, a.z + b.z); }
 static V3 vsub(V3 a, V3 b) { return vmk(a.x - b.x, a.y - b.y, a.z - b.z); }
-static V3 vmul(V3 a, float s) { return vmk(a.x * s, a.y * s, a.z * s); }
 static float vdot(V3 a, V3 b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
-static float vlen(V3 a) { return sqrtf(vdot(a, a)); }
 
 typedef struct {
     float x, z;
@@ -108,7 +111,8 @@ int main(int argc, char* argv[]) {
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     consoleInit(GFX_BOTTOM, NULL);
 
-    C3D_RenderTarget* topTarget = C3D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
+    C3D_RenderTarget* target = C3D_RenderTargetCreate(240, 400, GPU_RB_RGB8, GPU_RB_DEPTH24);
+    C3D_RenderTargetSetOutput(target, GFX_TOP, GFX_LEFT, DISPLAY_TRANSFER_FLAGS);
 
     initGame();
 
@@ -152,8 +156,11 @@ int main(int argc, char* argv[]) {
 
         // --- RENDU 3D ÉCRAN DU HAUT ---
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-        C2D_TargetClear(topTarget, C2D_Color32(20, 20, 35, 255));
-        C2D_SceneBegin(topTarget);
+        C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0x141423FF, 0);
+        C3D_FrameDrawOn(target);
+
+        C2D_Prepare();
+        C2D_SceneBegin(target);
 
         // Configuration de la caméra 3D subjective
         V3 camPos = vmk(playerX, 1.0f, playerZ);
@@ -171,7 +178,6 @@ int main(int argc, char* argv[]) {
         // Dessin des aliens vivants en 3D (cubes rouges menaçants)
         for(int i = 0; i < 5; i++) {
             if (aliens[i].active) {
-                // Approche lente vers le joueur
                 float dx = playerX - aliens[i].x;
                 float dz = playerZ - aliens[i].z;
                 float dist = sqrtf(dx*dx + dz*dz);
@@ -194,7 +200,7 @@ int main(int argc, char* argv[]) {
         printf("\x1b[1;1H=== MUSEE ALIEN : 3D REEL ===");
         printf("\x1b[3;1HPosition : X=%.1f | Z=%.1f", (double)playerX, (double)playerZ);
         printf("\x1b[4;1HAliens elimines : %d / 5", aliensKilled);
-        printf("\x1b[6;1HUtilisez [R] pour tirer sur les cubes rouges !");
+        printf("\x1b[6;1HUtilisez [R] pour tirer sur les cubes !");
         if (hasHeart) {
             printf("\x1b[8;1H*** COEUR EXTRAIT ! VICTOIRE ! ***");
         }
