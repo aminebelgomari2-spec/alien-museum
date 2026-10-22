@@ -12,12 +12,16 @@ AUTHOR		:= Homebrew Dev
 UNIQUE_ID	:= 0xc7a23
 PRODUCT_CODE	:= CTR-P-ALEN
 
-# Chemins standards de devkitARM
+# Chemins standards de devkitARM dans l'image Docker
 DEVKITPRO	?= /opt/devkitpro
 DEVKITARM	?= $(DEVKITPRO)/devkitARM
 
-# C'est cette ligne qui corrige l'erreur :
-include $(DEVKITPRO)/libctru/3ds_rules
+# Recherche automatique du fichier de règles 3DS
+RULES_FILE := $(shell if [ -f $(DEVKITARM)/base_rules ]; then echo $(DEVKITARM)/base_rules; fi)
+include $(RULES_FILE)
+
+RULES_3DS := $(shell if [ -f $(DEVKITPRO)/libctru/3ds_rules ]; then echo $(DEVKITPRO)/libctru/3ds_rules; else echo $(DEVKITARM)/3ds_rules.rules; fi)
+include $(RULES_3DS)
 
 ARCH		:= -march=armv6k -mtune=mpcore -mfloat-abi=hard -mfpu=vfpv2
 CFLAGS		:= -g -Wall -O2 -mword-relocations $(ARCH) -D__3DS__ $(INCLUDE)
