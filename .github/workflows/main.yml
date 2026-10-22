@@ -1,58 +1,71 @@
-name: Build 3DS App
+# Définition directe des chemins pour le conteneur Docker devkitPro
+export DEVKITPRO	:= /opt/devkitpro
+export DEVKITARM	:= $(DEVKITPRO)/devkitARM
 
-on:
-  push:
-    branches: [ "main" ]
-  workflow_dispatch:
+TARGET		:= alien_museum
+BUILD		:= build
+SOURCES		:= source
+INCLUDES	:= include
+DATA		:= data
+ROMFS		:= romfs
 
-permissions:
-  contents: write
+TITLE		:= Musee Alien
+DESCRIPTION	:= Un FPS d'horreur sombre dans un musee alien.
+AUTHOR		:= Homebrew Dev
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    container:
-      image: devkitpro/devkitarm:latest
+UNIQUE_ID	:= 0xc7a23
+PRODUCT_CODE	:= CTR-P-ALEN
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+# Inclusion des règles de compilation avec le chemin direct
+include $(DEVKITARM)/3ds_rules.rules
 
-      - name: Installer les dependances systeme (wget, unzip, qrencode)
-        run: |
-          apt-get update && apt-get install -y wget unzip qrencode
+ARCH		:= -march=armv6k -mtune=mpcore -mfloat-abi=hard -mfpu=vfpv2
+CFLAGS		:= -g -Wall -O2 -mword-relocations $(ARCH) -D__3DS__ $(INCLUDE)
+CXXFLAGS	:= $(CFLAGS)
+ASFLAGS		:= -g $(ARCH)
+LDFLAGS		:= -specs=3dsx.specs $(ARCH)
 
-      - name: Telecharger et installer bannertool
-        run: |
-          wget -q https://github.com/diasurgical/bannertool/releases/download/1.2.0/bannertool.zip
-          unzip -j bannertool.zip "linux-x86_64/bannertool" -d /opt/devkitpro/tools/bin
-          chmod a+x /opt/devkitpro/tools/bin/bannertool
+LIBS		:= -lcitro2d -lcitro3d -lctru -lm
 
-      - name: Telecharger et installer makerom
-        run: |
-          wget -q https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18/makerom-v0.18-ubuntu_x86_64.zip
-          unzip -o makerom-v0.18-ubuntu_x86_64.zip makerom -d /opt/devkitpro/tools/bin
-          chmod a+x /opt/devkitpro/tools/bin/makerom
+ifneq ($(BUILD),$(notdir $(CURDIR)))
 
-      - name: Compiler le projet
-        env:
-          DEVKITARM: /opt/devkitpro/devkitARM
-        run: |
-          make
-          chmod +x tools/make_cia.sh
-          make cia
+export OUTPUT	:= $(CURDIR)/$(TARGET)
+export TOPDIR	:= $(CURDIR)
 
-      - name: Generer le QR code d'installation
-        run: |
-          qrencode -o qr_code.png "https://github.com/${{ github.repository }}/releases/download/latest/alien_museum.cia"
+.PHONY: all clean cia
 
-      - name: Publier dans les Releases GitHub
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest
-          files: |
-            alien_museum.3dsx
-            alien_museum.cia
-            qr_code.png
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+all: $(BUILD)
+	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+
+$(BUILD):
+	@mkdir -p $@
+
+clean:
+	@echo "Nettoyage..."
+	@rm -fr $(BUILD) $(TARGET).3dsx $(TARGET).cia $(TARGET).elf
+
+cia: all
+	@bash tools/make_cia.sh
+
+else
+
+DEPENDS	:= $(OFILES:.o=.d)
+OBJS	:= $(addprefix $(BUILD)/,$(notdir $(CFILES)) $(notdir $(CPPFILES)) $(notdir $(SFILES)))
+OBJS	:= $(OBJS:.cpp=.o)
+OBJS	:= $(OBJS:.c=.o)
+OBJS	:= $(OBJS:.s=.o)
+
+vpath %.c $(SOURCES)
+vpath %.cpp $(SOURCES)
+vpath %.s $(SOURCES)
+
+$(OUTPUT).3dsx: $(OUTPUT).elf
+
+$(OUTPUT).elf: $(OBJS)
+	@echo "Liaison $^ -> $@"
+	@$(LD) $(LDFLAGS) $(OBJS) $(LIBS) -o $@
+	@picasso $(OUTPUT).elf
+
+include $(DEPENDS)
+
+endif
