@@ -1,0 +1,62 @@
+name: Build 3DS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitarm:latest
+    steps:
+      - name: Recuperer le code
+        uses: actions/checkout@v4
+
+      - name: Installer les outils
+        run: |
+          apt-get update
+          apt-get install -y wget unzip qrencode python3
+          wget -q https://github.com/diasurgical/bannertool/releases/download/1.2.0/bannertool.zip
+          unzip -j bannertool.zip "linux-x86_64/bannertool" -d /opt/devkitpro/tools/bin
+          wget -q https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18/makerom-v0.18-ubuntu_x86_64.zip
+          unzip -o makerom-v0.18-ubuntu_x86_64.zip makerom -d /opt/devkitpro/tools/bin
+          chmod a+x /opt/devkitpro/tools/bin/makerom /opt/devkitpro/tools/bin/bannertool
+
+      - name: Generer les images et le son si absents
+        run: |
+          if [ ! -f assets/icon.png ] || [ ! -f assets/banner.png ] || [ ! -f assets/audio.wav ]; then
+            python3 tools/make_assets.py
+          fi
+          ls -l assets
+
+      - name: Compiler (.3dsx)
+        run: make
+
+      - name: Creer le .cia
+        run: make cia
+
+      - name: Creer le QR code
+        run: qrencode -o qrcode.png -s 10 -m 2 "https://github.com/${{ github.repository }}/releases/download/latest/museealien.cia"
+
+      - name: Sauvegarder les fichiers
+        uses: actions/upload-artifact@v4
+        with:
+          name: museealien
+          path: |
+            museealien.3dsx
+            museealien.cia
+            qrcode.png
+
+      - name: Publier dans les Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Derniere version
+          files: |
+            museealien.3dsx
+            museealien.cia
+            qrcode.png
