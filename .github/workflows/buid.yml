@@ -11,30 +11,36 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container:
-      image: devkitpro/basalt:latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Installer les dependances systeme
+      - name: Installer les dependances systeme et devkitPro
         run: |
-          apt-get update && apt-get install -y wget unzip qrencode
+          sudo apt-get update
+          sudo apt-get install -y wget unzip qrencode make build-essential
+          
+          # Installation du gestionnaire devkitPro (dkp-pacman)
+          sudo dkp-pacman -Syu --noconfirm || true
+          sudo dkp-pacman -S --noconfirm 3ds-dev 3ds-libcitro2d
 
       - name: Telecharger et installer bannertool
         run: |
           wget -q https://github.com/diasurgical/bannertool/releases/download/1.2.0/bannertool.zip
           unzip -j bannertool.zip "linux-x86_64/bannertool" -d /opt/devkitpro/tools/bin
-          chmod a+x /opt/devkitpro/tools/bin/bannertool
+          sudo chmod a+x /opt/devkitpro/tools/bin/bannertool
 
       - name: Telecharger et installer makerom
         run: |
           wget -q https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18/makerom-v0.18-ubuntu_x86_64.zip
           unzip -o makerom-v0.18-ubuntu_x86_64.zip makerom -d /opt/devkitpro/tools/bin
-          chmod a+x /opt/devkitpro/tools/bin/makerom
+          sudo chmod a+x /opt/devkitpro/tools/bin/makerom
 
       - name: Compiler le projet
+        env:
+          DEVKITPRO: /opt/devkitpro
+          DEVKITARM: /opt/devkitpro/devkitARM
         run: |
           make
           chmod +x tools/make_cia.sh
