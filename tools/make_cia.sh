@@ -1,28 +1,43 @@
-#!/bin/bash
-set -e
-ELF=$1
-CIA=$2
+#!/usr/bin/env bash
+set -euo pipefail
 
-echo "Preparation des ressources graphiques..."
+ELF="${1:-alien_museum.elf}"
+OUT="${2:-alien_museum.cia}"
+MAKEROM="${MAKEROM:-makerom}"
+BANNERTOOL="${BANNERTOOL:-bannertool}"
+WORK="build/cia"
 
-# Utilise l'icône et la bannière par défaut de libctru si les assets perso n'existent pas
-ICON="/opt/devkitpro/libctru/default_icon.png"
-if [ -f "assets/icon.png" ]; then
-    ICON="assets/icon.png"
+mkdir -p "$WORK"
+
+# Utilise une icône par défaut si assets/icon.png est absent ou invalide
+ICON="assets/icon.png"
+if [ ! -f "$ICON" ]; then
+    ICON="/opt/devkitpro/libctru/default_icon.png"
 fi
 
-# Génération du SMDH (icône et métadonnées)
-smdhtool --create "Musee Alien" "FPS d'horreur dans un musee alien" "Homebrew Dev" "$ICON" icon.icn
-
-# Si banner.png existe, on génère le banner, sinon on crée un banner vide/minimal
+echo "Generation de la banniere..."
 if [ -f "assets/banner.png" ] && [ -f "assets/audio.wav" ]; then
-    bannertool makebanner -i assets/banner.png -a assets/audio.wav -o banner.bnr
+    "$BANNERTOOL" makebanner -i assets/banner.png -a assets/audio.wav -o "$WORK/banner.bnr"
 else
-    echo "Attention: Assets de banniere/audio absents, utilisation d'un banner par defaut."
-    bannertool makebanner -i "$ICON" -o banner.bnr
+    # Bannière de secours si les assets manquent
+    "$BANNERTOOL" makebanner -i "$ICON" -o "$WORK/banner.bnr"
 fi
+
+echo "Generation du SMD..."
+"$BANNERTOOL" makesmdh \
+  -s "Musee Alien" \
+  -l "FPS d'horreur dans un musee alien" \
+  -p "Homebrew Dev" \
+  -i "$ICON" \
+  -o "$WORK/icon.icn"
 
 echo "Generation du fichier CIA..."
-makerom -f cia -o "$CIA" -elf "$ELF" -rsf app.rsf -target t -exefslogo -icon icon.icn -banner banner.bnr
+"$MAKEROM" -f cia -o "$OUT" \
+  -elf "$ELF" \
+  -rsf app.rsf \
+  -target t \
+  -exefslogo \
+  -icon "$WORK/icon.icn" \
+  -banner "$WORK/banner.bnr"
 
-echo "CIA genere avec succes !"
+ls -l "$OUT"
