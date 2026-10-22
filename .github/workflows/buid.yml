@@ -12,7 +12,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: devkitpro/devkitarm:latest
+      image: devkitpro/basalt:latest
 
     steps:
       - name: Checkout repository
@@ -21,10 +21,6 @@ jobs:
       - name: Installer les dependances systeme
         run: |
           apt-get update && apt-get install -y wget unzip qrencode
-
-      - name: Installer l'environnement 3DS (libctru / citro2d)
-        run: |
-          dkp-pacman -Sy --noconfirm --needed 3ds-dev 3ds-libcitro2d
 
       - name: Telecharger et installer bannertool
         run: |
